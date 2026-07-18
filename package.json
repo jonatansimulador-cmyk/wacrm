@@ -1,0 +1,15 @@
+{
+  "name": "wacrm-backend",
+  "version": "1.0.0",
+  "description": "Backend real para WACRM - conexión y envío de mensajes por WhatsApp (QR, estilo WhatsApp Web)",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "express": "^4.19.2",
+    "socket.io": "^4.7.5",
+    "whatsapp-web.js": "latest",
+    "qrcode": "^1.5.3"
+  }
+}

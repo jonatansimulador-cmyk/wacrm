@@ -1,0 +1,1245 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>WACRM — WhatsApp Marketing</title>
+<script src="/socket.io/socket.io.js"></script>
+<style>
+  :root{
+    --green:#1fb35a;
+    --green-dark:#0f8a45;
+    --yellow:#ffe600;
+    --blue:#2563eb;
+    --purple:#7c3aed;
+    --orange:#f97316;
+    --pink:#ec4899;
+    --indigo:#4f46e5;
+    --bg:#f4f6f8;
+    --card:#ffffff;
+    --border:#e6e9ee;
+    --text:#111827;
+    --muted:#6b7280;
+    --radius:14px;
+    --shadow:0 1px 3px rgba(16,24,40,.06), 0 1px 2px rgba(16,24,40,.04);
+  }
+  *{box-sizing:border-box;}
+  body{margin:0;font-family:"Segoe UI",Roboto,Helvetica,Arial,sans-serif;background:var(--bg);color:var(--text);}
+
+  /* ===== Top promo banner ===== */
+  .promo-top{
+    display:flex;align-items:center;gap:16px;
+    background:linear-gradient(90deg,#7ee8e8,#4fd1c5 30%,#a8e6a1 70%,#7ee8e8);
+    padding:14px 24px;
+  }
+  .promo-badge{
+    width:64px;height:64px;border-radius:50%;
+    background:radial-gradient(circle at 35% 30%, #35d16b, #0f8a3f 75%);
+    display:flex;align-items:center;justify-content:center;
+    border:3px solid #0f8a3f;flex-shrink:0;
+  }
+  .promo-badge svg{width:30px;height:30px;}
+  .promo-text{
+    flex:1;background:var(--yellow);border:3px solid var(--green-dark);
+    border-radius:40px;padding:10px 28px;
+    font-weight:900;font-size:26px;letter-spacing:1px;color:#0f8a3f;
+    text-shadow:1px 1px 0 #fff;
+  }
+
+  /* ===== App shell ===== */
+  .app{display:flex;min-height:70vh;}
+
+  /* Sidebar */
+  .sidebar{
+    width:260px;background:#fff;border-right:1px solid var(--border);
+    display:flex;flex-direction:column;flex-shrink:0;
+  }
+  .brand{
+    display:flex;align-items:center;gap:10px;padding:16px;border-bottom:1px solid var(--border);
+  }
+  .brand-icon{
+    width:38px;height:38px;border-radius:8px;background:#111;display:flex;align-items:center;justify-content:center;
+  }
+  .brand-icon svg{width:20px;height:20px;}
+  .brand-names{line-height:1.15;}
+  .brand-names .tag{font-size:10px;font-weight:700;color:var(--orange);letter-spacing:.5px;}
+  .brand-names .name{font-size:18px;font-weight:800;color:var(--green-dark);font-style:italic;}
+
+  .nav{flex:1;overflow-y:auto;padding:8px;}
+  .nav-item{
+    display:flex;align-items:center;gap:12px;padding:10px 12px;margin:2px 4px;border-radius:10px;
+    cursor:pointer;color:var(--text);
+  }
+  .nav-item:hover{background:#f2f4f7;}
+  .nav-item.active{color:#fff;}
+  .nav-item .ic{width:20px;height:20px;flex-shrink:0;display:flex;align-items:center;justify-content:center;}
+  .nav-item .labels{line-height:1.2;}
+  .nav-item .labels .t1{font-weight:700;font-size:13.5px;}
+  .nav-item .labels .t2{font-size:11px;opacity:.85;}
+
+  /* Main */
+  .main{flex:1;min-width:0;display:flex;flex-direction:column;}
+  .topbar{
+    display:flex;align-items:center;gap:16px;padding:16px 24px;border-bottom:1px solid var(--border);background:#fff;
+  }
+  .topbar .menu-btn{border:none;background:none;cursor:pointer;color:var(--muted);}
+  .topbar .titles{margin-right:auto;}
+  .topbar .titles h1{font-size:19px;margin:0;display:flex;align-items:center;gap:8px;}
+  .topbar .titles p{margin:2px 0 0;font-size:12.5px;color:var(--muted);}
+  .ver-pill{font-size:10px;background:#eef2ff;color:var(--indigo);padding:2px 8px;border-radius:20px;font-weight:700;}
+  .search{
+    display:flex;align-items:center;gap:8px;background:#f4f6f8;border:1px solid var(--border);
+    border-radius:10px;padding:8px 12px;width:220px;color:var(--muted);font-size:13px;
+  }
+  .top-actions{display:flex;align-items:center;gap:12px;}
+  .icon-btn{width:36px;height:36px;border-radius:10px;border:1px solid var(--border);background:#fff;display:flex;align-items:center;justify-content:center;cursor:pointer;color:var(--muted);}
+  .icon-btn.accent{background:linear-gradient(135deg,#22d3ee,#3b82f6);border:none;color:#fff;}
+  .demo-pill{font-size:12px;background:#f4f6f8;padding:6px 10px;border-radius:8px;display:flex;align-items:center;gap:8px;}
+  .renew-btn{background:var(--blue);color:#fff;border:none;padding:4px 10px;border-radius:6px;font-size:11px;font-weight:700;cursor:pointer;}
+  .avatar{width:32px;height:32px;border-radius:50%;background:var(--indigo);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:13px;}
+
+  .content{padding:22px 24px 40px;}
+  .view{display:none;animation:fade .25s ease;}
+  .view.active{display:block;}
+  @keyframes fade{from{opacity:0;transform:translateY(4px);}to{opacity:1;transform:translateY(0);}}
+
+  .grid-stats{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-bottom:18px;}
+  @media(max-width:900px){.grid-stats{grid-template-columns:repeat(2,1fr);}}
+  .stat-card{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:16px;box-shadow:var(--shadow);}
+  .stat-card .label{font-size:12.5px;color:var(--muted);margin-bottom:6px;}
+  .stat-card .value{font-size:26px;font-weight:800;margin-bottom:8px;}
+  .stat-card .foot{display:flex;align-items:center;justify-content:space-between;font-size:11.5px;color:var(--green-dark);}
+
+  .two-col{display:grid;grid-template-columns:1.3fr 1fr;gap:16px;}
+  @media(max-width:900px){.two-col{grid-template-columns:1fr;}}
+  .panel{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:18px;box-shadow:var(--shadow);}
+  .panel h3{margin:0 0 14px;font-size:15px;}
+  .panel-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;}
+  .link{color:var(--blue);font-size:12.5px;text-decoration:none;font-weight:600;cursor:pointer;}
+  .empty-state{display:flex;flex-direction:column;align-items:center;justify-content:center;padding:40px 0;color:var(--muted);text-align:center;gap:6px;}
+  .empty-state svg{width:34px;height:34px;opacity:.4;margin-bottom:4px;}
+
+  .quick-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;}
+  .quick-btn{
+    border:none;border-radius:12px;padding:16px 10px;color:#fff;font-weight:700;font-size:12.5px;
+    display:flex;flex-direction:column;align-items:center;gap:8px;cursor:pointer;text-align:center;
+  }
+  .quick-btn svg{width:20px;height:20px;}
+  .qb-blue{background:var(--blue);} .qb-green{background:var(--green);} .qb-orange{background:var(--orange);}
+  .qb-purple{background:var(--purple);} .qb-indigo{background:var(--indigo);} .qb-pink{background:var(--pink);}
+
+  .page-head{margin-bottom:16px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;}
+  .page-head h2{margin:0;font-size:19px;display:flex;align-items:center;gap:8px;}
+  .page-head p{margin:4px 0 0;color:var(--muted);font-size:13px;}
+  .btn{border:none;border-radius:9px;padding:9px 16px;font-weight:700;font-size:13px;cursor:pointer;display:inline-flex;align-items:center;gap:6px;}
+  .btn-primary{background:var(--blue);color:#fff;}
+  .btn-outline{background:#fff;border:1px solid var(--border);color:var(--text);}
+  .btn-danger{background:#fee2e2;color:#dc2626;}
+
+  table{width:100%;border-collapse:collapse;font-size:13px;}
+  th{text-align:left;color:var(--muted);font-weight:700;font-size:11.5px;text-transform:uppercase;padding:10px 8px;border-bottom:1px solid var(--border);}
+  td{padding:12px 8px;border-bottom:1px solid var(--border);}
+  .badge{padding:3px 9px;border-radius:20px;font-size:11px;font-weight:700;display:inline-flex;align-items:center;gap:4px;}
+  .badge-green{background:#dcfce7;color:#15803d;}
+  .badge-blue{background:#dbeafe;color:#1d4ed8;}
+  .badge-gray{background:#f3f4f6;color:#4b5563;}
+
+  .tabs{display:flex;gap:4px;border-bottom:1px solid var(--border);margin-bottom:18px;flex-wrap:wrap;}
+  .tab{padding:10px 14px;font-size:13px;font-weight:600;color:var(--muted);cursor:pointer;border-bottom:2px solid transparent;}
+  .tab.active{color:var(--blue);border-color:var(--blue);}
+
+  .input, select.input{
+    width:100%;padding:10px 12px;border:1px solid var(--border);border-radius:9px;font-size:13px;background:#fff;color:var(--text);
+  }
+  .field{margin-bottom:14px;}
+  .field label{display:block;font-size:12.5px;font-weight:600;margin-bottom:6px;color:var(--text);}
+  .toggle-group{display:flex;gap:8px;}
+  .toggle-opt{flex:1;border:1px solid var(--border);border-radius:9px;padding:14px 8px;text-align:center;cursor:pointer;font-size:12.5px;font-weight:600;}
+  .toggle-opt.active{border-color:var(--blue);background:#eff6ff;color:var(--blue);}
+
+  .device-card{display:flex;align-items:center;justify-content:space-between;padding:14px;border:1px solid var(--border);border-radius:12px;margin-bottom:10px;}
+  .device-left{display:flex;align-items:center;gap:12px;}
+  .dot{width:9px;height:9px;border-radius:50%;background:#22c55e;}
+
+  .cards-row{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:18px;}
+  @media(max-width:900px){.cards-row{grid-template-columns:repeat(2,1fr);}}
+  .mini-card{background:#fff;border:1px solid var(--border);border-radius:12px;padding:14px;}
+  .mini-card .label{font-size:12px;color:var(--muted);display:flex;align-items:center;gap:6px;}
+  .mini-card .value{font-size:22px;font-weight:800;margin-top:4px;}
+
+  .placeholder{display:flex;flex-direction:column;align-items:center;justify-content:center;padding:80px 20px;text-align:center;color:var(--muted);}
+  .placeholder .ic{width:56px;height:56px;border-radius:16px;background:#eef2ff;display:flex;align-items:center;justify-content:center;margin-bottom:16px;}
+  .placeholder h3{color:var(--text);margin:0 0 6px;}
+
+  /* Bottom promo */
+  .promo-bottom{
+    display:flex;align-items:center;justify-content:center;gap:16px;
+    background:linear-gradient(90deg,#7ee8e8,#4fd1c5 30%,#a8e6a1 70%,#7ee8e8);
+    padding:18px 24px;flex-wrap:wrap;
+  }
+  .wa-icon{width:46px;height:46px;border-radius:50%;background:#22c55e;display:flex;align-items:center;justify-content:center;border:3px solid #fff;}
+  .promo-bottom .msg{background:#fff;border:2px solid #16a34a;border-radius:30px;padding:12px 26px;font-weight:900;font-size:20px;text-align:center;color:#1e3a5f;}
+  .promo-bottom .msg .accent{color:#dc2626;}
+  .promo-bottom .msg .accent2{color:#16a34a;}
+
+  ::-webkit-scrollbar{width:8px;height:8px;}
+  ::-webkit-scrollbar-thumb{background:#d1d5db;border-radius:4px;}
+</style>
+</head>
+<body>
+
+<!-- ===== LOGIN OVERLAY ===== -->
+<div id="loginOverlay" style="position:fixed;inset:0;background:#f4f6f8;z-index:9999;display:flex;align-items:center;justify-content:center;">
+  <div style="background:#fff;border:1px solid var(--border);border-radius:16px;padding:32px;width:320px;box-shadow:var(--shadow);">
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:20px;">
+      <div style="width:38px;height:38px;border-radius:8px;background:#111;display:flex;align-items:center;justify-content:center;">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M12 2C6.48 2 2 6.48 2 12c0 1.85.5 3.58 1.38 5.07L2 22l5.06-1.32A9.94 9.94 0 0012 22c5.52 0 10-4.48 10-10S17.52 2 12 2z" fill="#25D366"/></svg>
+      </div>
+      <div><div style="font-size:10px;font-weight:700;color:var(--orange);">AUTOMATIZA, VENDE Y CRECE</div><div style="font-size:18px;font-weight:800;color:var(--green-dark);font-style:italic;">WACRM</div></div>
+    </div>
+    <div class="field"><label>Usuario</label><input class="input" id="loginUsername" placeholder="usuario"></div>
+    <div class="field"><label>Contraseña</label><input class="input" id="loginPassword" type="password" placeholder="••••••••"></div>
+    <button class="btn btn-primary" id="loginBtn" style="width:100%;justify-content:center;">Ingresar</button>
+    <div id="loginError" style="color:#dc2626;font-size:12.5px;margin-top:10px;"></div>
+  </div>
+</div>
+
+<div id="appRoot" style="display:none;">
+
+<!-- ===== TOP PROMO BANNER ===== -->
+<div class="promo-top">
+  <div class="promo-badge">
+    <svg viewBox="0 0 24 24" fill="none"><path d="M12 2C6.48 2 2 6.48 2 12c0 1.85.5 3.58 1.38 5.07L2 22l5.06-1.32A9.94 9.94 0 0012 22c5.52 0 10-4.48 10-10S17.52 2 12 2z" fill="#fff"/><path d="M12 6.5a1.5 1.5 0 100 3 1.5 1.5 0 000-3zM12 11a1.5 1.5 0 00-1.5 1.5V16a1.5 1.5 0 003 0v-3.5A1.5 1.5 0 0012 11z" fill="#0f8a3f"/></svg>
+  </div>
+  <div class="promo-text">WHATSAPP MARKETING</div>
+</div>
+
+<div class="app">
+  <!-- ===== SIDEBAR ===== -->
+  <aside class="sidebar">
+    <div class="brand">
+      <div class="brand-icon">
+        <svg viewBox="0 0 24 24" fill="none"><path d="M12 2C6.48 2 2 6.48 2 12c0 1.85.5 3.58 1.38 5.07L2 22l5.06-1.32A9.94 9.94 0 0012 22c5.52 0 10-4.48 10-10S17.52 2 12 2z" fill="#25D366"/></svg>
+      </div>
+      <div class="brand-names">
+        <div class="tag">AUTOMATIZA, VENDE Y CRECE</div>
+        <div class="name">WACRM</div>
+      </div>
+    </div>
+    <nav class="nav" id="nav"></nav>
+  </aside>
+
+  <!-- ===== MAIN ===== -->
+  <main class="main">
+    <div class="topbar">
+      <button class="menu-btn" title="Menú">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M3 12h18M3 18h18"/></svg>
+      </button>
+      <div class="titles">
+        <h1 id="pageTitle">Panel de Control <span class="ver-pill">v1.0.9</span></h1>
+        <p id="pageSubtitle">Resumen de tus actividades de automatización de WhatsApp</p>
+      </div>
+      <div class="search">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>
+        Buscar...
+      </div>
+      <div class="top-actions">
+        <button class="icon-btn" title="Tema"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z"/></svg></button>
+        <button class="icon-btn accent" title="Boost"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2"><path d="M13 2L3 14h7l-1 8 11-14h-7l1-6z"/></svg></button>
+        <button class="icon-btn" title="Notificaciones"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8a6 6 0 10-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 01-3.46 0"/></svg></button>
+        <div class="demo-pill" id="userPill">Demo <button class="renew-btn" id="logoutUserBtn">Salir</button></div>
+        <div class="avatar" id="userAvatar">D</div>
+      </div>
+    </div>
+
+    <div class="content" id="content"></div>
+  </main>
+</div>
+
+<!-- ===== BOTTOM PROMO BANNER ===== -->
+<div class="promo-bottom">
+  <div class="wa-icon"><svg width="24" height="24" viewBox="0 0 24 24" fill="#fff"><path d="M12 2C6.48 2 2 6.48 2 12c0 1.85.5 3.58 1.38 5.07L2 22l5.06-1.32A9.94 9.94 0 0012 22c5.52 0 10-4.48 10-10S17.52 2 12 2z"/></svg></div>
+  <div class="msg">ENVÍA <span class="accent">MENSAJES MASIVOS</span><br>ILIMITADOS POR <span class="accent2">WHATSAPP</span></div>
+  <div class="wa-icon"><svg width="24" height="24" viewBox="0 0 24 24" fill="#fff"><path d="M12 2C6.48 2 2 6.48 2 12c0 1.85.5 3.58 1.38 5.07L2 22l5.06-1.32A9.94 9.94 0 0012 22c5.52 0 10-4.48 10-10S17.52 2 12 2z"/></svg></div>
+</div>
+
+</div><!-- /#appRoot -->
+
+<script>
+/* ============ ICONS (simple inline SVG paths) ============ */
+const ic = {
+  home:'<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12l9-9 9 9"/><path d="M9 21V12h6v9"/></svg>',
+  phone:'<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="7" y="2" width="10" height="20" rx="2"/><path d="M11 18h2"/></svg>',
+  send:'<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 2L11 13"/><path d="M22 2l-7 20-4-9-9-4 20-7z"/></svg>',
+  doc:'<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><path d="M14 2v6h6"/></svg>',
+  users:'<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/></svg>',
+  chat:'<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 11.5a8.38 8.38 0 01-.9 3.8 8.5 8.5 0 01-7.6 4.7 8.38 8.38 0 01-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 01-.9-3.8 8.5 8.5 0 014.7-7.6 8.38 8.38 0 013.8-.9h.5a8.48 8.48 0 018 8v.5z"/></svg>',
+  fire:'<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M8.5 14.5A2.5 2.5 0 0011 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 11-14 0c0-1.153.433-2.294 1-3a2.5 2.5 0 004.5 2.5z"/></svg>',
+  bell:'<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8a6 6 0 10-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 01-3.46 0"/></svg>',
+  bolt:'<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M13 2L3 14h7l-1 8 11-14h-7l1-6z"/></svg>',
+  robot:'<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="10" rx="2"/><circle cx="8" cy="16" r="1"/><circle cx="16" cy="16" r="1"/><path d="M12 11V7"/><circle cx="12" cy="5" r="2"/></svg>',
+  call:'<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 16.92v3a2 2 0 01-2.18 2 19.8 19.8 0 01-8.63-3.07 19.5 19.5 0 01-6-6 19.8 19.8 0 01-3.07-8.67A2 2 0 014.11 2h3a2 2 0 012 1.72c.127.96.361 1.903.7 2.81a2 2 0 01-.45 2.11L8.09 9.91a16 16 0 006 6l1.27-1.27a2 2 0 012.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0122 16.92z"/></svg>',
+  clock:'<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>',
+  redial:'<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 4v6h6"/><path d="M3.51 15a9 9 0 102.13-9.36L1 10"/></svg>',
+  extract:'<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>',
+  group:'<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/></svg>',
+  chart:'<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 20V10"/><path d="M12 20V4"/><path d="M6 20v-6"/></svg>',
+  globe:'<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M2 12h20"/><path d="M12 2a15.3 15.3 0 010 20 15.3 15.3 0 010-20z"/></svg>',
+  gear:'<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 11-2.83 2.83l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 11-2.83-2.83l.06-.06A1.65 1.65 0 004.6 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 112.83-2.83l.06.06A1.65 1.65 0 009 4.6a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09c0 .68.4 1.28 1 1.51.35.15.75.15 1.09 0 .3-.13.63-.16.94-.1s.6.24.82.46l.06.06a2 2 0 11-2.83 2.83l-.06-.06a1.65 1.65 0 00-1.82-.33h-.09c-.63.24-1.05.84-1.05 1.51V9a2 2 0 014 0v.09a1.65 1.65 0 001.51 1c.63.24 1.34.15 1.82-.33l.06-.06a2 2 0 112.83 2.83l-.06.06a1.65 1.65 0 00-.33 1.82z"/></svg>',
+  eye:'<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>',
+  trash:'<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18"/><path d="M8 6V4a2 2 0 012-2h4a2 2 0 012 2v2m3 0v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6"/></svg>',
+  edit:'<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.12 2.12 0 013 3L12 15l-4 1 1-4z"/></svg>',
+};
+
+/* ============ NAV DATA ============ */
+const navItems = [
+  {id:'panel',    icon:ic.home,  t1:'Panel de Control', t2:'Resumen y Análisis', color:'#2563eb', asesorAllowed:true},
+  {id:'dispositivos', icon:ic.phone, t1:'Dispositivos', t2:'Sesiones de WhatsApp', color:'#16a34a'},
+  {id:'individual', icon:ic.send, t1:'Mensaje Individual', t2:'Mensajes de Prueba', color:'#2563eb'},
+  {id:'plantillas', icon:ic.doc, t1:'Plantillas', t2:'Plantillas de Mensajes', color:'#f97316'},
+  {id:'contactos', icon:ic.users, t1:'Contactos', t2:'Gestión de Contactos', color:'#f97316'},
+  {id:'masivos', icon:ic.chat, t1:'Mensajes Masivos', t2:'Mensajería Masiva', color:'#ec4899'},
+  {id:'warmer', icon:ic.fire, t1:'Warmer', t2:'Calentar números de WhatsApp', color:'#f59e0b'},
+  {id:'exclusion', icon:ic.bell, t1:'Gestión de Exclusión', t2:'Preferencias de comunicación', color:'#dc2626'},
+  {id:'autoresp', icon:ic.bolt, t1:'Respuesta Automática', t2:'Flujo de cobranza automatizado', color:'#f59e0b'},
+  {id:'conversaciones', icon:ic.chat, t1:'Conversaciones', t2:'Bandeja y supervisión en vivo', color:'#059669', asesorAllowed:true},
+  {id:'chatbot', icon:ic.robot, t1:'Chatbot', t2:'Conversaciones IA', color:'#0891b2'},
+  {id:'chatbotia', icon:ic.bolt, t1:'Chatbot IA', t2:'Conversaciones con OpenAI y Gemini', color:'#4f46e5'},
+  {id:'llamadas', icon:ic.call, t1:'Respondedor de Llamadas', t2:'Automatización de Llamadas', color:'#dc2626'},
+  {id:'seguimiento', icon:ic.clock, t1:'Seguimiento', t2:'Mensajes de seguimiento', color:'#0891b2'},
+  {id:'rellamada', icon:ic.redial, t1:'Bot de Rellamada', t2:'Automatizar rellamadas', color:'#7c3aed'},
+  {id:'extractor', icon:ic.extract, t1:'Extractor de Grupos', t2:'Extraer Grupos y Comunidades', color:'#0891b2'},
+  {id:'grupos', icon:ic.group, t1:'Gestión de Grupos', t2:'Crear y gestionar grupos', color:'#7c3aed'},
+  {id:'informes', icon:ic.chart, t1:'Informes', t2:'Análisis e Informes', color:'#16a34a'},
+  {id:'localizacion', icon:ic.globe, t1:'Localization', t2:'Idiomas y traducciones', color:'#0891b2'},
+  {id:'usuarios', icon:ic.users, t1:'Usuarios', t2:'Asesores y asignaciones', color:'#dc2626', adminOnly:true},
+  {id:'configuracion', icon:ic.gear, t1:'Configuración', t2:'Configuración de la App', color:'#4b5563'},
+];
+
+const navEl = document.getElementById('nav');
+function buildNav(role){
+  navEl.innerHTML = '';
+  navItems.forEach(item=>{
+    if(item.adminOnly && role !== 'admin') return;
+    if(role === 'asesor' && !item.asesorAllowed) return;
+    const el = document.createElement('div');
+    el.className='nav-item'+(item.id==='panel'?' active':'');
+    el.dataset.id=item.id;
+    el.innerHTML = `<span class="ic">${item.icon}</span><span class="labels"><div class="t1">${item.t1}</div><div class="t2">${item.t2}</div></span>`;
+    el.style.setProperty('--c', item.color);
+    el.addEventListener('click',()=>selectNav(item));
+    navEl.appendChild(el);
+  });
+}
+
+function selectNav(item){
+  document.querySelectorAll('.nav-item').forEach(n=>{n.classList.remove('active');n.style.background='';n.style.color='';});
+  const target = document.querySelector(`.nav-item[data-id="${item.id}"]`);
+  if(target){
+    target.classList.add('active');
+    target.style.background = item.color;
+    target.style.color = '#fff';
+  }
+  document.getElementById('pageTitle').innerHTML = item.t1 + ' <span class="ver-pill">v1.0.9</span>';
+  document.getElementById('pageSubtitle').innerText = item.t2;
+  document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));
+  const view = document.getElementById('view-'+item.id);
+  if(view) view.classList.add('active');
+  if(item.id === 'autoresp' && typeof loadAutoresponderStatus === 'function') loadAutoresponderStatus();
+  if(item.id === 'conversaciones' && typeof loadConvoList === 'function') loadConvoList();
+  if(item.id === 'usuarios' && typeof loadUsersList === 'function') loadUsersList();
+}
+
+/* ============ VIEWS ============ */
+const content = document.getElementById('content');
+
+function view(id, html){
+  const d = document.createElement('div');
+  d.className = 'view' + (id==='panel'?' active':'');
+  d.id = 'view-'+id;
+  d.innerHTML = html;
+  content.appendChild(d);
+}
+
+/* ---- Panel de Control ---- */
+view('panel', `
+  <div class="grid-stats">
+    <div class="stat-card"><div class="label">Mensajes Enviados</div><div class="value">16</div><div class="foot"><span>↑ Mensajes Totales</span>${ic.send}</div></div>
+    <div class="stat-card"><div class="label">Dispositivos Activos</div><div class="value">1</div><div class="foot"><span>↑ 1 sesión total</span>${ic.phone}</div></div>
+    <div class="stat-card"><div class="label">Total de Contactos</div><div class="value">2</div><div class="foot"><span>↑ Todos los contactos</span>${ic.users}</div></div>
+    <div class="stat-card"><div class="label">Plantillas</div><div class="value">1</div><div class="foot"><span>↑ Plantillas activas</span>${ic.doc}</div></div>
+  </div>
+  <div class="two-col">
+    <div class="panel">
+      <div class="panel-head"><h3>Actividad Reciente</h3><span class="link">Ver Todo</span></div>
+      <div class="empty-state">
+        ${ic.clock}
+        <div>Sin actividad reciente</div>
+        <div style="font-size:12px">Las actividades aparecerán aquí mientras uses la aplicación</div>
+      </div>
+    </div>
+    <div class="panel">
+      <h3>Acciones Rápidas</h3>
+      <div class="quick-grid">
+        <button class="quick-btn qb-blue" onclick="selectNav(navItems.find(n=>n.id==='individual'))">${ic.send}Enviar Mensaje Masivo</button>
+        <button class="quick-btn qb-green" onclick="selectNav(navItems.find(n=>n.id==='dispositivos'))">${ic.phone}Agregar Dispositivo</button>
+        <button class="quick-btn qb-orange" onclick="selectNav(navItems.find(n=>n.id==='plantillas'))">${ic.doc}Crear Plantilla</button>
+        <button class="quick-btn qb-purple" onclick="selectNav(navItems.find(n=>n.id==='contactos'))">${ic.users}Importar Contactos</button>
+        <button class="quick-btn qb-indigo" onclick="selectNav(navItems.find(n=>n.id==='chatbot'))">${ic.chat}Chatbot</button>
+        <button class="quick-btn qb-pink" onclick="selectNav(navItems.find(n=>n.id==='informes'))">${ic.doc}Informes</button>
+      </div>
+    </div>
+  </div>
+`);
+
+/* ---- Dispositivos (conexión real vía QR) ---- */
+view('dispositivos', `
+  <div class="page-head">
+    <div><h2>${ic.phone} Dispositivos</h2><p>Vincula tu WhatsApp real escaneando el código QR</p></div>
+  </div>
+  <div class="two-col">
+    <div class="panel">
+      <div class="device-card" id="deviceStatusCard">
+        <div class="device-left">
+          <span class="dot" id="deviceDot" style="background:#d1d5db"></span>
+          <div><b id="deviceLabel">Sin conectar</b><div style="font-size:12px;color:var(--muted)" id="deviceSub">Escanea el código QR para vincular tu WhatsApp</div></div>
+        </div>
+        <span class="badge badge-gray" id="deviceBadge">Desconectado</span>
+      </div>
+      <button class="btn btn-danger" id="logoutBtn" style="margin-top:12px;display:none;">Cerrar sesión</button>
+    </div>
+    <div class="panel" style="text-align:center;">
+      <h3>Código QR</h3>
+      <div id="qrWrap" style="display:flex;align-items:center;justify-content:center;min-height:230px;">
+        <div class="empty-state" id="qrEmpty">
+          ${ic.phone}
+          <div>Esperando código QR del servidor...</div>
+          <div style="font-size:12px">Asegúrate de tener el backend (server.js) corriendo</div>
+        </div>
+        <img id="qrImg" style="display:none;max-width:220px;border:1px solid var(--border);border-radius:10px;">
+      </div>
+    </div>
+  </div>
+`);
+
+/* ---- Mensaje individual (envío real) ---- */
+view('individual', `
+  <div class="panel" style="max-width:520px;">
+    <h3>Enviar Mensaje Real por WhatsApp</h3>
+    <div id="indivConnBanner" class="badge badge-gray" style="margin-bottom:14px;">Verificando conexión...</div>
+    <div class="field"><label>Número (con código de país, sin +)</label><input class="input" id="indivNumber" placeholder="Ej: 51987654321"></div>
+    <div class="field"><label>Mensaje</label><textarea class="input" rows="4" id="indivMessage" placeholder="Escribe tu mensaje..."></textarea></div>
+    <button class="btn btn-primary" id="indivSendBtn">${ic.send} Enviar Mensaje</button>
+    <div id="indivResult" style="margin-top:12px;font-size:13px;"></div>
+  </div>
+`);
+
+/* ---- Plantillas ---- */
+view('plantillas', `
+  <div class="page-head">
+    <div><h2>${ic.doc} Plantillas</h2><p>Crea y administra tus plantillas de mensajes</p></div>
+    <button class="btn btn-primary">+ Crear Plantilla</button>
+  </div>
+  <div class="panel">
+    <table>
+      <tr><th>Nombre</th><th>Tipo</th><th>Creada</th><th>Acciones</th></tr>
+      <tr><td>Bienvenida</td><td><span class="badge badge-blue">Texto</span></td><td>10/07/2026</td><td>${ic.eye} ${ic.edit} ${ic.trash}</td></tr>
+    </table>
+  </div>
+`);
+
+/* ---- Contactos ---- */
+view('contactos', `
+  <div class="page-head">
+    <div><h2>${ic.users} Contactos</h2><p>Importa, organiza y administra tus contactos</p></div>
+    <div style="display:flex;gap:8px;">
+      <button class="btn btn-outline">+ Agregar Manual</button>
+      <button class="btn btn-outline">Copiar/Pegar</button>
+      <button class="btn btn-primary">Importar Excel</button>
+    </div>
+  </div>
+  <div class="cards-row">
+    <div class="mini-card"><div class="label">${ic.users} Total Contactos</div><div class="value">2</div></div>
+    <div class="mini-card"><div class="label">✅ Verificados</div><div class="value">2</div></div>
+    <div class="mini-card"><div class="label">⏳ Sin verificar</div><div class="value">0</div></div>
+    <div class="mini-card"><div class="label">❌ Inválidos</div><div class="value">0</div></div>
+  </div>
+  <div class="panel">
+    <table>
+      <tr><th>Contacto</th><th>Teléfono</th><th>Estado</th><th>Acciones</th></tr>
+      <tr><td>Eberth</td><td>51978463610</td><td><span class="badge badge-green">Verificado</span></td><td>${ic.edit} ${ic.trash}</td></tr>
+      <tr><td>Marlita</td><td>51921258302</td><td><span class="badge badge-green">Verificado</span></td><td>${ic.edit} ${ic.trash}</td></tr>
+    </table>
+  </div>
+`);
+
+/* ---- Mensajes masivos (envío real con progreso en vivo) ---- */
+view('masivos', `
+  <div class="page-head">
+    <div><h2>${ic.chat} Mensajes Masivos</h2><p>Envía mensajes reales a múltiples números por WhatsApp</p></div>
+  </div>
+  <div class="panel" style="max-width:640px;">
+    <div id="masivoConnBanner" class="badge badge-gray" style="margin-bottom:14px;">Verificando conexión...</div>
+    <div class="field"><label>Números (uno por línea, con código de país, sin +)</label>
+      <textarea class="input" id="masivoNumbers" rows="5" placeholder="51987654321
+51911223344
+51955667788"></textarea>
+    </div>
+    <div class="field"><label>Mensaje</label><textarea class="input" id="masivoMessage" rows="4" placeholder="Escribe el mensaje que se enviará a todos..."></textarea></div>
+    <div class="field" style="display:flex;gap:12px;">
+      <div style="flex:1;"><label>Retraso mínimo (s)</label><input class="input" id="masivoMin" type="number" value="3" min="1"></div>
+      <div style="flex:1;"><label>Retraso máximo (s)</label><input class="input" id="masivoMax" type="number" value="9" min="1"></div>
+    </div>
+    <button class="btn btn-primary" id="masivoSendBtn">${ic.send} Iniciar Envío Masivo</button>
+  </div>
+  <div class="panel" style="max-width:640px;margin-top:16px;" id="masivoProgressPanel" style="display:none;">
+    <h3>Progreso</h3>
+    <div style="height:10px;background:#eef;border-radius:4px;overflow:hidden;margin-bottom:8px;">
+      <div id="masivoBar" style="width:0%;height:100%;background:var(--blue);transition:width .2s;"></div>
+    </div>
+    <div style="font-size:12.5px;color:var(--muted);margin-bottom:10px;" id="masivoSummary">0 enviados · 0 fallidos · 0/0</div>
+    <div id="masivoLog" style="max-height:200px;overflow-y:auto;font-size:12.5px;"></div>
+  </div>
+`);
+
+/* ---- Warmer ---- */
+view('warmer', `
+  <div class="page-head"><div><h2>${ic.fire} Warmer</h2><p>Calienta tus números de WhatsApp con conversaciones automatizadas</p></div>
+  <button class="btn btn-primary">+ Nuevo Warmer</button></div>
+  <div class="panel"><div class="empty-state">${ic.fire}<div>No hay warmers activos</div><div style="font-size:12px">Crea un warmer para simular actividad natural entre tus números</div></div></div>
+`);
+
+/* ---- Exclusión ---- */
+view('exclusion', `
+  <div class="page-head"><div><h2>${ic.bell} Gestión de Exclusión</h2><p>Gestiona preferencias de comunicación y solicitudes de exclusión</p></div></div>
+  <div class="panel"><div class="empty-state">${ic.bell}<div>No hay contactos excluidos</div></div></div>
+`);
+
+/* ---- Respuesta automática (flujo real de cobranza) ---- */
+view('autoresp', `
+  <div class="page-head">
+    <div><h2>${ic.bolt} Respuesta Automática</h2><p>Flujo automatizado para el primer contacto — luego pasa a un asesor humano</p></div>
+  </div>
+  <div class="two-col">
+    <div class="panel">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;">
+        <div>
+          <b>Estado del bot</b>
+          <div style="font-size:12.5px;color:var(--muted)">Activa o desactiva las respuestas automáticas para nuevos contactos</div>
+        </div>
+        <label style="position:relative;display:inline-block;width:48px;height:26px;flex-shrink:0;">
+          <input type="checkbox" id="autoresponderToggle" style="opacity:0;width:0;height:0;">
+          <span id="autoresponderSlider" style="position:absolute;cursor:pointer;inset:0;background:#d1d5db;border-radius:26px;transition:.2s;"></span>
+        </label>
+      </div>
+      <div id="autoresponderStatusBanner" class="badge badge-gray">Verificando estado...</div>
+      <div style="margin-top:18px;font-size:12.5px;color:var(--muted);line-height:1.5;">
+        ⚠️ Un asesor humano siempre revisa la conversación antes de continuar cualquier gestión de pago.
+        El bot solo recopila datos iniciales; no confirma pagos, montos ni acuerdos.
+      </div>
+    </div>
+    <div class="panel">
+      <h3>Guion del flujo (fijo)</h3>
+      <div style="display:flex;flex-direction:column;gap:10px;font-size:13px;">
+        <div style="border-left:3px solid var(--blue);padding:8px 12px;background:#f8fafc;border-radius:6px;"><b>1. Saludo</b><br>Se presenta y solicita el DNI del cliente.</div>
+        <div style="border-left:3px solid var(--orange);padding:8px 12px;background:#f8fafc;border-radius:6px;"><b>2. Modalidad de pago</b><br>Contado, fraccionado o consulta de descuento.</div>
+        <div style="border-left:3px solid var(--purple);padding:8px 12px;background:#f8fafc;border-radius:6px;"><b>3. Monto disponible</b><br>Pregunta con qué monto cuenta para liquidar/abonar.</div>
+        <div style="border-left:3px solid var(--green);padding:8px 12px;background:#f8fafc;border-radius:6px;"><b>4. Entrega a asesor</b><br>El bot se detiene; el caso aparece en "Conversaciones" para que un humano continúe.</div>
+      </div>
+    </div>
+  </div>
+`);
+
+/* ---- Conversaciones (bandeja real, supervisión en vivo) ---- */
+view('conversaciones', `
+  <div class="page-head">
+    <div><h2>${ic.chat} Conversaciones</h2><p>Supervisa el bot y continúa como asesor cuando el caso lo requiera</p></div>
+    <button class="btn btn-outline" id="refreshConvos">↻ Actualizar</button>
+  </div>
+  <div style="display:grid;grid-template-columns:340px 1fr;gap:16px;">
+    <div class="panel" style="padding:0;overflow:hidden;">
+      <div id="convoList" style="max-height:600px;overflow-y:auto;"></div>
+    </div>
+    <div class="panel" id="convoDetailPanel">
+      <div class="empty-state">${ic.chat}<div>Selecciona una conversación</div><div style="font-size:12px">Los mensajes y datos del cliente aparecerán aquí</div></div>
+    </div>
+  </div>
+`);
+view('chatbot', `
+  <div class="page-head"><div><h2>${ic.robot} Chatbot</h2><p>Conversaciones automatizadas simples</p></div><button class="btn btn-primary">+ Crear Flujo</button></div>
+  <div class="panel"><div class="empty-state">${ic.robot}<div>Aún no hay flujos de chatbot</div></div></div>
+`);
+
+/* ---- Chatbot IA ---- */
+view('chatbotia', `
+  <div class="page-head">
+    <div><h2>${ic.bolt} Gestión de Chatbot IA</h2><p>Conversaciones inteligentes impulsadas por IA con OpenAI y Gemini</p></div>
+    <button class="btn btn-primary">+ Crear Chatbot</button>
+  </div>
+  <div class="tabs">
+    <div class="tab active">Chatbots</div><div class="tab">Análisis</div><div class="tab">Documentos</div><div class="tab">Configuración</div>
+  </div>
+  <div class="panel"><div class="empty-state">${ic.bolt}<div>Aún no hay chatbots IA</div><div style="font-size:12px">Crea tu primer chatbot IA para comenzar conversaciones inteligentes</div>
+  <button class="btn btn-primary" style="margin-top:12px;">+ Crear Chatbot</button></div></div>
+`);
+
+/* ---- Llamadas ---- */
+view('llamadas', `
+  <div class="page-head"><div><h2>${ic.call} Respondedor de Llamadas</h2><p>Automatización de Llamadas</p></div></div>
+  <div class="panel"><div class="empty-state">${ic.call}<div>Sin configuración activa</div></div></div>
+`);
+
+/* ---- Seguimiento ---- */
+view('seguimiento', `
+  <div class="page-head">
+    <div><h2>${ic.clock} Follow Up Messages</h2><p>Programa y administra mensajes de seguimiento</p></div>
+    <button class="btn btn-primary">+ Crear Seguimiento</button>
+  </div>
+  <div class="cards-row">
+    <div class="mini-card"><div class="label">Programados</div><div class="value">0</div></div>
+    <div class="mini-card"><div class="label">Enviados Hoy</div><div class="value">0</div></div>
+    <div class="mini-card"><div class="label">Fallidos</div><div class="value">0</div></div>
+    <div class="mini-card"><div class="label">Alta Prioridad</div><div class="value">0</div></div>
+  </div>
+  <div class="panel"><div class="empty-state">${ic.bell}<div>No se encontraron seguimientos</div><div style="font-size:12px">Comienza creando tu primer mensaje de seguimiento</div></div></div>
+`);
+
+/* ---- Bot rellamada ---- */
+view('rellamada', `
+  <div class="page-head"><div><h2>${ic.redial} Bot de Rellamada</h2><p>Automatiza rellamadas y seguimientos</p></div></div>
+  <div class="panel"><div class="empty-state">${ic.redial}<div>Sin rellamadas configuradas</div></div></div>
+`);
+
+/* ---- Extractor de grupos ---- */
+view('extractor', `
+  <div class="page-head"><div><h2>${ic.extract} Extractor de Grupos</h2><p>Extrae miembros de grupos y comunidades</p></div>
+  <button class="btn btn-primary">Extraer</button></div>
+  <div class="panel"><div class="empty-state">${ic.extract}<div>Selecciona un grupo para extraer sus miembros</div></div></div>
+`);
+
+/* ---- Gestión de grupos ---- */
+view('grupos', `
+  <div class="page-head">
+    <div><h2>${ic.group} Manage Groups</h2><p>Crea y administra grupos de WhatsApp</p></div>
+    <div style="display:flex;gap:8px;"><button class="btn btn-primary">+ Crear Grupo</button><button class="btn btn-outline">Acciones (0)</button></div>
+  </div>
+  <div class="panel">
+    <div class="field"><label>Sesión de WhatsApp</label><select class="input"><option>01 (conectado) — 51921026974</option></select></div>
+    <table>
+      <tr><th>Grupo</th><th>Miembros</th><th>Rol</th><th>Creado</th><th>Acciones</th></tr>
+      <tr><td>WhatsCRM ZOOM 01</td><td><span class="badge badge-blue">34 miembros</span></td><td>Admin</td><td>9/5/2025</td><td>${ic.eye} ${ic.edit} ${ic.trash}</td></tr>
+      <tr><td>Importaciones de china 🚀</td><td><span class="badge badge-blue">123 miembros</span></td><td>Miembro</td><td>29/5/2024</td><td>${ic.eye} ${ic.edit} ${ic.trash}</td></tr>
+    </table>
+  </div>
+`);
+
+/* ---- Informes ---- */
+view('informes', `
+  <div class="page-head"><div><h2>${ic.chart} Informes</h2><p>Análisis e informes de tu actividad</p></div></div>
+  <div class="grid-stats">
+    <div class="stat-card"><div class="label">Tasa de Entrega</div><div class="value">98%</div></div>
+    <div class="stat-card"><div class="label">Tasa de Respuesta</div><div class="value">42%</div></div>
+    <div class="stat-card"><div class="label">Mensajes / día</div><div class="value">16</div></div>
+    <div class="stat-card"><div class="label">Contactos Nuevos</div><div class="value">2</div></div>
+  </div>
+`);
+
+/* ---- Localización ---- */
+view('localizacion', `
+  <div class="page-head"><div><h2>${ic.globe} Localization Manager</h2><p>Administra y personaliza traducciones para todos los idiomas</p></div></div>
+  <div class="panel">
+    <table>
+      <tr><th>Clave</th><th>English</th><th>Español</th></tr>
+      <tr><td>panel.title</td><td>Dashboard</td><td>Panel de Control</td></tr>
+      <tr><td>contacts.title</td><td>Contacts</td><td>Contactos</td></tr>
+      <tr><td>templates.title</td><td>Templates</td><td>Plantillas</td></tr>
+    </table>
+  </div>
+`);
+
+/* ---- Usuarios (gestión de asesores, solo admin) ---- */
+view('usuarios', `
+  <div class="page-head">
+    <div><h2>${ic.users} Usuarios</h2><p>Crea asesores y revisa cuántos casos tiene asignados cada uno</p></div>
+  </div>
+  <div class="two-col">
+    <div class="panel">
+      <h3>Nuevo Asesor</h3>
+      <div class="field"><label>Nombre completo</label><input class="input" id="newUserName" placeholder="Ej: Ana Torres"></div>
+      <div class="field"><label>Usuario (para iniciar sesión)</label><input class="input" id="newUserUsername" placeholder="ej: ana.torres"></div>
+      <div class="field"><label>Contraseña</label><input class="input" id="newUserPassword" type="password" placeholder="••••••••"></div>
+      <button class="btn btn-primary" id="createUserBtn">+ Crear Asesor</button>
+      <div id="createUserResult" style="margin-top:10px;font-size:13px;"></div>
+    </div>
+    <div class="panel">
+      <h3>Asesores y Administradores</h3>
+      <div id="usersList"><div class="empty-state">${ic.clock}<div>Cargando...</div></div></div>
+    </div>
+  </div>
+`);
+
+/* ---- Configuración ---- */
+view('configuracion', `
+  <div class="page-head"><div><h2>${ic.gear} Configuración</h2><p>Configurar ajustes de la aplicación</p></div></div>
+  <div class="tabs">
+    <div class="tab active">Configuración General</div><div class="tab">Notificaciones</div><div class="tab">App Updates</div><div class="tab">Email Settings</div>
+  </div>
+  <div class="two-col">
+    <div class="panel">
+      <h3>Configuración General</h3>
+      <div class="field"><label>Tema de la App</label>
+        <div class="toggle-group">
+          <div class="toggle-opt active" onclick="toggleTheme(this,'claro')">☀️ Claro</div>
+          <div class="toggle-opt" onclick="toggleTheme(this,'oscuro')">🌙 Oscuro</div>
+          <div class="toggle-opt" onclick="toggleTheme(this,'sistema')">💻 Sistema</div>
+        </div>
+      </div>
+      <div class="field"><label>Idioma</label><select class="input"><option>🇪🇸 Español</option><option>🇬🇧 English</option></select></div>
+    </div>
+    <div class="panel">
+      <h3>Notificaciones</h3>
+      <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid var(--border);">Notificaciones de mensajes <input type="checkbox" checked></div>
+      <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 0;">Alertas de conexión <input type="checkbox" checked></div>
+    </div>
+  </div>
+`);
+
+function toggleTheme(el){
+  el.parentElement.querySelectorAll('.toggle-opt').forEach(o=>o.classList.remove('active'));
+  el.classList.add('active');
+}
+
+/* ============================================================
+   AUTENTICACIÓN / SESIÓN
+   ============================================================ */
+let currentUser = null;
+
+async function checkSession(){
+  try{
+    const res = await fetch('/api/me');
+    if(res.ok){
+      const data = await res.json();
+      onLoginSuccess(data.user);
+    } else {
+      showLogin();
+    }
+  }catch(e){
+    showLogin();
+  }
+}
+
+function showLogin(){
+  document.getElementById('loginOverlay').style.display = 'flex';
+  document.getElementById('appRoot').style.display = 'none';
+}
+
+function onLoginSuccess(user){
+  currentUser = user;
+  document.getElementById('loginOverlay').style.display = 'none';
+  document.getElementById('appRoot').style.display = 'block';
+  document.getElementById('userAvatar').innerText = (user.name||user.username).charAt(0).toUpperCase();
+  document.getElementById('userPill').innerHTML = `${user.name} (${user.role === 'admin' ? 'Admin' : 'Asesor'}) <button class="renew-btn" id="logoutUserBtn">Salir</button>`;
+  buildNav(user.role);
+  selectNav(navItems.find(n=>n.id === (user.role==='asesor' ? 'conversaciones' : 'panel')));
+  if(!socket.connected) socket.connect();
+  loadAutoresponderStatus();
+}
+
+document.getElementById('loginBtn').addEventListener('click', async ()=>{
+  const username = document.getElementById('loginUsername').value.trim();
+  const password = document.getElementById('loginPassword').value;
+  const errEl = document.getElementById('loginError');
+  errEl.innerText = '';
+  if(!username || !password){ errEl.innerText = 'Completa usuario y contraseña.'; return; }
+  try{
+    const res = await fetch('/api/login', {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({username, password})
+    });
+    const data = await res.json();
+    if(res.ok){
+      onLoginSuccess(data.user);
+    } else {
+      errEl.innerText = data.error || 'Error al iniciar sesión.';
+    }
+  }catch(e){
+    errEl.innerText = 'No se pudo conectar con el servidor.';
+  }
+});
+document.getElementById('loginPassword').addEventListener('keydown', (e)=>{
+  if(e.key === 'Enter') document.getElementById('loginBtn').click();
+});
+
+document.addEventListener('click', async (e)=>{
+  if(e.target && e.target.id === 'logoutUserBtn'){
+    await fetch('/api/logout-user', {method:'POST'});
+    if(socket.connected) socket.disconnect();
+    currentUser = null;
+    location.reload();
+  }
+});
+
+/* ============================================================
+   GESTIÓN DE USUARIOS/ASESORES (vista Usuarios, solo admin)
+   ============================================================ */
+async function loadUsersList(){
+  const el = document.getElementById('usersList');
+  if(!el) return;
+  try{
+    const res = await fetch('/api/users');
+    if(!res.ok){ el.innerHTML = '<div class="empty-state">Sin acceso.</div>'; return; }
+    const list = await res.json();
+    el.innerHTML = list.map(u => `
+      <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid var(--border);">
+        <div>
+          <b>${u.name}</b> <span class="badge ${u.role==='admin'?'badge-blue':'badge-green'}">${u.role==='admin'?'Admin':'Asesor'}</span>
+          <div style="font-size:12px;color:var(--muted);">@${u.username}</div>
+        </div>
+        ${u.role !== 'admin' ? `<button class="btn btn-danger" data-del-user="${u.id}">Eliminar</button>` : ''}
+      </div>
+    `).join('') || '<div class="empty-state">Sin usuarios</div>';
+  }catch(e){
+    el.innerHTML = '<div class="empty-state" style="color:#dc2626;">Error al cargar usuarios.</div>';
+  }
+}
+
+document.addEventListener('click', async (e)=>{
+  if(e.target && e.target.id === 'createUserBtn'){
+    const name = document.getElementById('newUserName').value.trim();
+    const username = document.getElementById('newUserUsername').value.trim();
+    const password = document.getElementById('newUserPassword').value;
+    const resultEl = document.getElementById('createUserResult');
+    if(!name || !username || !password){ resultEl.innerHTML = '<span style="color:#dc2626">Completa todos los campos.</span>'; return; }
+    try{
+      const res = await fetch('/api/users', {
+        method:'POST', headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({name, username, password, role:'asesor'})
+      });
+      const data = await res.json();
+      if(res.ok){
+        resultEl.innerHTML = '<span style="color:#16a34a">✅ Asesor creado correctamente.</span>';
+        document.getElementById('newUserName').value = '';
+        document.getElementById('newUserUsername').value = '';
+        document.getElementById('newUserPassword').value = '';
+        loadUsersList();
+      } else {
+        resultEl.innerHTML = '<span style="color:#dc2626">❌ '+(data.error||'Error')+'</span>';
+      }
+    }catch(err){
+      resultEl.innerHTML = '<span style="color:#dc2626">❌ No se pudo conectar con el servidor.</span>';
+    }
+  }
+  if(e.target && e.target.dataset && e.target.dataset.delUser){
+    if(!confirm('¿Eliminar este asesor? Sus conversaciones quedarán sin asignar.')) return;
+    await fetch('/api/users/' + e.target.dataset.delUser, {method:'DELETE'});
+    loadUsersList();
+  }
+});
+
+/* ============================================================
+   CONEXIÓN REAL CON EL BACKEND (server.js) VÍA SOCKET.IO
+   ============================================================ */
+let waConnected = false;
+let waNumber = null;
+const socket = io({autoConnect:false});
+
+socket.on('status', (data) => {
+  waConnected = !!data.connected;
+  waNumber = data.number || null;
+  renderDeviceStatus();
+  renderConnBanners();
+});
+
+socket.on('qr', (dataUrl) => {
+  const img = document.getElementById('qrImg');
+  const empty = document.getElementById('qrEmpty');
+  if (img && empty) {
+    img.src = dataUrl;
+    img.style.display = 'inline-block';
+    empty.style.display = 'none';
+  }
+});
+
+socket.on('loading', (data) => {
+  const empty = document.getElementById('qrEmpty');
+  if (empty) {
+    empty.innerHTML = `${ic.phone}<div>Cargando WhatsApp Web: ${data.percent}%</div><div style="font-size:12px">${data.message||''}</div>`;
+    empty.style.display = 'flex';
+  }
+});
+
+socket.on('backend-slow', (data) => {
+  const empty = document.getElementById('qrEmpty');
+  if (empty && !document.getElementById('qrImg').src.includes('data:image')) {
+    empty.innerHTML = `${ic.clock}<div style="color:#b45309">⏳ Todavía iniciando...</div><div style="font-size:12px">${data.message}</div>`;
+    empty.style.display = 'flex';
+  }
+});
+
+socket.on('backend-error', (data) => {
+  const empty = document.getElementById('qrEmpty');
+  if (empty) {
+    empty.innerHTML = `${ic.bell}<div style="color:#dc2626;font-weight:700">❌ Error del backend</div><div style="font-size:12px;color:#dc2626;max-width:260px;">${data.message}</div><div style="font-size:11.5px;margin-top:8px;color:var(--muted)">Revisa la terminal para más detalles y soluciones sugeridas.</div>`;
+    empty.style.display = 'flex';
+    document.getElementById('qrImg').style.display = 'none';
+  }
+});
+
+function renderDeviceStatus(){
+  const dot = document.getElementById('deviceDot');
+  const label = document.getElementById('deviceLabel');
+  const sub = document.getElementById('deviceSub');
+  const badge = document.getElementById('deviceBadge');
+  const logoutBtn = document.getElementById('logoutBtn');
+  const qrImg = document.getElementById('qrImg');
+  const qrEmpty = document.getElementById('qrEmpty');
+  if(!dot) return; // vista no montada aún
+
+  if (waConnected) {
+    dot.style.background = '#22c55e';
+    label.innerText = '01 · ' + (waNumber || 'Conectado');
+    sub.innerText = 'Sesión activa — lista para enviar mensajes';
+    badge.className = 'badge badge-green';
+    badge.innerText = 'Conectado';
+    logoutBtn.style.display = 'inline-flex';
+    if(qrImg){ qrImg.style.display='none'; }
+    if(qrEmpty){ qrEmpty.innerHTML = `${ic.phone}<div>WhatsApp conectado ✅</div>`; qrEmpty.style.display='flex'; }
+  } else {
+    dot.style.background = '#d1d5db';
+    label.innerText = 'Sin conectar';
+    sub.innerText = 'Escanea el código QR para vincular tu WhatsApp';
+    badge.className = 'badge badge-gray';
+    badge.innerText = 'Desconectado';
+    logoutBtn.style.display = 'none';
+  }
+}
+
+function renderConnBanners(){
+  const banners = [document.getElementById('indivConnBanner'), document.getElementById('masivoConnBanner')];
+  banners.forEach(b=>{
+    if(!b) return;
+    if (waConnected) {
+      b.className = 'badge badge-green';
+      b.innerText = '✅ WhatsApp conectado (' + (waNumber||'') + ')';
+    } else {
+      b.className = 'badge badge-gray';
+      b.innerHTML = '⚠️ WhatsApp no conectado — ve a "Dispositivos" y escanea el QR';
+    }
+  });
+}
+
+// Botón cerrar sesión
+document.addEventListener('click', async (e)=>{
+  if(e.target && e.target.id === 'logoutBtn'){
+    e.target.disabled = true;
+    e.target.innerText = 'Cerrando sesión...';
+    try{ await fetch('/api/logout', {method:'POST'}); }catch(err){}
+  }
+});
+
+// Envío individual real
+document.addEventListener('click', async (e)=>{
+  if(e.target && e.target.id === 'indivSendBtn'){
+    const number = document.getElementById('indivNumber').value.trim();
+    const message = document.getElementById('indivMessage').value.trim();
+    const resultEl = document.getElementById('indivResult');
+    if(!number || !message){ resultEl.innerHTML = '<span style="color:#dc2626">Completa número y mensaje.</span>'; return; }
+
+    e.target.disabled = true;
+    e.target.innerText = 'Enviando...';
+    resultEl.innerHTML = '';
+    try{
+      const res = await fetch('/api/send-message', {
+        method:'POST', headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({number, message})
+      });
+      const data = await res.json();
+      if(res.ok){
+        resultEl.innerHTML = '<span style="color:#16a34a">✅ Mensaje enviado correctamente a '+number+'</span>';
+        document.getElementById('indivMessage').value = '';
+      } else {
+        resultEl.innerHTML = '<span style="color:#dc2626">❌ '+(data.error||'Error al enviar')+'</span>';
+      }
+    }catch(err){
+      resultEl.innerHTML = '<span style="color:#dc2626">❌ No se pudo conectar con el servidor backend (¿está corriendo server.js?)</span>';
+    }
+    e.target.disabled = false;
+    e.target.innerHTML = `${ic.send} Enviar Mensaje`;
+  }
+});
+
+// Envío masivo real con progreso en vivo
+document.addEventListener('click', async (e)=>{
+  if(e.target && e.target.id === 'masivoSendBtn'){
+    const raw = document.getElementById('masivoNumbers').value.trim();
+    const message = document.getElementById('masivoMessage').value.trim();
+    const minDelay = parseFloat(document.getElementById('masivoMin').value) || 3;
+    const maxDelay = parseFloat(document.getElementById('masivoMax').value) || 9;
+    const numbers = raw.split('\n').map(n=>n.trim()).filter(Boolean);
+
+    if(numbers.length === 0 || !message){
+      alert('Agrega al menos un número y un mensaje.');
+      return;
+    }
+
+    e.target.disabled = true;
+    e.target.innerText = 'Enviando...';
+    document.getElementById('masivoLog').innerHTML = '';
+    document.getElementById('masivoBar').style.width = '0%';
+    document.getElementById('masivoSummary').innerText = `0 enviados · 0 fallidos · 0/${numbers.length}`;
+
+    try{
+      const res = await fetch('/api/send-bulk', {
+        method:'POST', headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({numbers, message, minDelay, maxDelay})
+      });
+      const data = await res.json();
+      if(!res.ok){
+        alert(data.error || 'Error al iniciar el envío masivo');
+        e.target.disabled = false;
+        e.target.innerHTML = `${ic.send} Iniciar Envío Masivo`;
+      }
+    }catch(err){
+      alert('No se pudo conectar con el servidor backend (¿está corriendo server.js?)');
+      e.target.disabled = false;
+      e.target.innerHTML = `${ic.send} Iniciar Envío Masivo`;
+    }
+  }
+});
+
+socket.on('bulk-progress', (p)=>{
+  const bar = document.getElementById('masivoBar');
+  const summary = document.getElementById('masivoSummary');
+  const log = document.getElementById('masivoLog');
+  if(!bar) return;
+  const pct = Math.round(((p.sent + p.failed) / p.total) * 100);
+  bar.style.width = pct + '%';
+  summary.innerText = `${p.sent} enviados · ${p.failed} fallidos · ${p.sent+p.failed}/${p.total}`;
+  const line = document.createElement('div');
+  line.style.padding = '4px 0';
+  line.innerHTML = p.status === 'sent'
+    ? `<span style="color:#16a34a">✔ ${p.number} — enviado</span>`
+    : `<span style="color:#dc2626">✘ ${p.number} — ${p.error||'falló'}</span>`;
+  log.prepend(line);
+});
+
+socket.on('bulk-done', (summary)=>{
+  const btn = document.getElementById('masivoSendBtn');
+  if(btn){ btn.disabled = false; btn.innerHTML = `${ic.send} Iniciar Envío Masivo`; }
+  alert(`Envío masivo terminado: ${summary.sent} enviados, ${summary.failed} fallidos.`);
+});
+
+// Al abrir la app, pintar estado inicial si ya llegó
+renderDeviceStatus();
+renderConnBanners();
+
+/* ============================================================
+   RESPUESTA AUTOMÁTICA (toggle) + CONVERSACIONES (bandeja real)
+   ============================================================ */
+let selectedConvoNumber = null;
+
+function paintToggle(enabled){
+  const slider = document.getElementById('autoresponderSlider');
+  const banner = document.getElementById('autoresponderStatusBanner');
+  const checkbox = document.getElementById('autoresponderToggle');
+  if(!slider) return;
+  checkbox.checked = enabled;
+  slider.style.background = enabled ? 'var(--green)' : '#d1d5db';
+  slider.innerHTML = '';
+  const knob = document.createElement('span');
+  knob.style.cssText = `position:absolute;height:20px;width:20px;left:${enabled?'25px':'3px'};bottom:3px;background:white;border-radius:50%;transition:.2s;`;
+  slider.appendChild(knob);
+  banner.className = 'badge ' + (enabled ? 'badge-green' : 'badge-gray');
+  banner.innerText = enabled ? '🤖 Bot activo — respondiendo primeros contactos' : '⏸️ Bot desactivado — nadie recibirá respuestas automáticas';
+}
+
+async function loadAutoresponderStatus(){
+  try{
+    const res = await fetch('/api/autoresponder');
+    const data = await res.json();
+    paintToggle(data.enabled);
+  }catch(e){}
+}
+
+document.addEventListener('change', async (e)=>{
+  if(e.target && e.target.id === 'autoresponderToggle'){
+    const enabled = e.target.checked;
+    paintToggle(enabled);
+    try{
+      await fetch('/api/autoresponder/toggle', {
+        method:'POST', headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({enabled})
+      });
+    }catch(err){}
+  }
+});
+
+socket.on('autoresponder-status', (data)=> paintToggle(data.enabled));
+
+function statusBadge(status){
+  if(status === 'bot') return '<span class="badge badge-blue">🤖 Bot</span>';
+  if(status === 'waiting_agent') return '<span class="badge" style="background:#fef3c7;color:#92400e;">🙋 Esperando asesor</span>';
+  if(status === 'human') return '<span class="badge badge-green">👤 Asesor</span>';
+  return '<span class="badge badge-gray">'+status+'</span>';
+}
+
+function fmtNumber(n){ return n.replace('@c.us',''); }
+function fmtTime(ts){ return ts ? new Date(ts).toLocaleString('es-PE',{hour:'2-digit',minute:'2-digit',day:'2-digit',month:'2-digit'}) : ''; }
+
+async function loadConvoList(){
+  const listEl = document.getElementById('convoList');
+  if(!listEl) return;
+  try{
+    const res = await fetch('/api/conversations');
+    const list = await res.json();
+    if(list.length === 0){
+      listEl.innerHTML = `<div class="empty-state" style="padding:30px 16px;">${ic.chat}<div>Sin conversaciones todavía</div><div style="font-size:12px">Aparecerán aquí cuando un cliente escriba por primera vez</div></div>`;
+      return;
+    }
+    listEl.innerHTML = list.map(c => `
+      <div class="convo-item" data-number="${c.number}" style="padding:14px 16px;border-bottom:1px solid var(--border);cursor:pointer;${selectedConvoNumber===c.number?'background:#eff6ff;':''}">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">
+          <b style="font-size:13.5px;">${fmtNumber(c.number)}</b>
+          ${statusBadge(c.status)}
+        </div>
+        <div style="font-size:12px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${c.lastMessage ? (c.lastMessage.from==='cliente'?'':'Tú: ')+c.lastMessage.text : ''}</div>
+        <div style="font-size:11px;color:var(--muted);margin-top:2px;">${fmtTime(c.updatedAt)} · ${c.messageCount} mensajes${c.data.dni?' · DNI: '+c.data.dni:''}${c.assignedName?' · 👤 '+c.assignedName:''}</div>
+      </div>
+    `).join('');
+    listEl.querySelectorAll('.convo-item').forEach(el=>{
+      el.addEventListener('click', ()=> openConvo(el.dataset.number));
+    });
+  }catch(e){
+    listEl.innerHTML = `<div class="empty-state" style="padding:30px 16px;color:#dc2626;">No se pudo conectar con el servidor.</div>`;
+  }
+}
+
+async function openConvo(number){
+  selectedConvoNumber = number;
+  loadConvoList();
+  const panel = document.getElementById('convoDetailPanel');
+  panel.innerHTML = `<div class="empty-state">${ic.clock}<div>Cargando...</div></div>`;
+  try{
+    const res = await fetch('/api/conversations/' + encodeURIComponent(number));
+    const c = await res.json();
+    renderConvoDetail(c);
+  }catch(e){
+    panel.innerHTML = `<div class="empty-state" style="color:#dc2626;">No se pudo cargar la conversación.</div>`;
+  }
+}
+
+async function renderConvoDetail(c){
+  const panel = document.getElementById('convoDetailPanel');
+  const dataRows = `
+    <div style="display:flex;gap:16px;flex-wrap:wrap;margin-bottom:14px;font-size:12.5px;">
+      <div><b>DNI:</b> ${c.data.dni || '—'}</div>
+      <div><b>Modalidad:</b> ${c.data.paymentOption || '—'}</div>
+      <div><b>Monto disponible:</b> ${c.data.budget || '—'}</div>
+    </div>`;
+
+  let assignRow = '';
+  if(currentUser && currentUser.role === 'admin'){
+    let options = '<option value="">Sin asignar</option>';
+    try{
+      const res = await fetch('/api/users');
+      const list = await res.json();
+      options += list.filter(u=>u.role==='asesor').map(u=>
+        `<option value="${u.username}" ${c.assignedTo===u.username?'selected':''}>${u.name}</option>`
+      ).join('');
+    }catch(e){}
+    assignRow = `
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:14px;">
+        <label style="font-size:12.5px;font-weight:600;">Asignar a:</label>
+        <select class="input" id="assignSelect" style="max-width:220px;">${options}</select>
+      </div>`;
+  } else if(c.assignedName){
+    assignRow = `<div style="margin-bottom:14px;"><span class="badge badge-blue">👤 Asignado a: ${c.assignedName}</span></div>`;
+  }
+
+  const messagesHtml = c.messages.map(m => {
+    const mine = m.from !== 'cliente';
+    const label = m.from === 'bot' ? '🤖 Bot' : m.from === 'asesor' ? '👤 ' + (m.by || 'Asesor') : '';
+    return `<div style="display:flex;justify-content:${mine?'flex-end':'flex-start'};margin-bottom:8px;">
+      <div style="max-width:75%;padding:8px 12px;border-radius:10px;background:${mine?'#dbeafe':'#f3f4f6'};font-size:13px;">
+        ${label ? `<div style="font-size:10.5px;color:var(--muted);margin-bottom:2px;">${label}</div>` : ''}
+        ${m.text}
+      </div>
+    </div>`;
+  }).join('');
+
+  panel.innerHTML = `
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
+      <div><b>${fmtNumber(c.number)}</b> ${statusBadge(c.status)}</div>
+      <div style="display:flex;gap:8px;">
+        ${c.status !== 'human'
+          ? `<button class="btn btn-outline" id="takeoverBtn">Tomar conversación</button>`
+          : `<button class="btn btn-outline" id="resumeBotBtn">Reactivar bot</button>`}
+      </div>
+    </div>
+    ${assignRow}
+    ${dataRows}
+    <div style="border-top:1px solid var(--border);padding-top:12px;max-height:340px;overflow-y:auto;margin-bottom:12px;" id="convoMessages">${messagesHtml}</div>
+    <div style="display:flex;gap:8px;">
+      <input class="input" id="convoReplyInput" placeholder="Escribe una respuesta como asesor...">
+      <button class="btn btn-primary" id="convoReplyBtn">${ic.send}</button>
+    </div>
+  `;
+
+  const msgsEl = document.getElementById('convoMessages');
+  if(msgsEl) msgsEl.scrollTop = msgsEl.scrollHeight;
+
+  const assignSelect = document.getElementById('assignSelect');
+  if(assignSelect) assignSelect.addEventListener('change', async ()=>{
+    await fetch(`/api/conversations/${encodeURIComponent(c.number)}/assign`, {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({username: assignSelect.value || null})
+    });
+    openConvo(c.number);
+  });
+
+  const takeoverBtn = document.getElementById('takeoverBtn');
+  if(takeoverBtn) takeoverBtn.onclick = async ()=>{
+    await fetch(`/api/conversations/${encodeURIComponent(c.number)}/takeover`, {method:'POST'});
+    openConvo(c.number);
+  };
+  const resumeBtn = document.getElementById('resumeBotBtn');
+  if(resumeBtn) resumeBtn.onclick = async ()=>{
+    await fetch(`/api/conversations/${encodeURIComponent(c.number)}/resume-bot`, {method:'POST'});
+    openConvo(c.number);
+  };
+  const replyBtn = document.getElementById('convoReplyBtn');
+  const replyInput = document.getElementById('convoReplyInput');
+  const sendReply = async ()=>{
+    const message = replyInput.value.trim();
+    if(!message) return;
+    replyBtn.disabled = true;
+    try{
+      await fetch(`/api/conversations/${encodeURIComponent(c.number)}/reply`, {
+        method:'POST', headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({message})
+      });
+      replyInput.value = '';
+      openConvo(c.number);
+    }catch(e){}
+    replyBtn.disabled = false;
+  };
+  if(replyBtn) replyBtn.onclick = sendReply;
+  if(replyInput) replyInput.addEventListener('keydown', (e)=>{ if(e.key==='Enter') sendReply(); });
+}
+
+document.addEventListener('click', (e)=>{
+  if(e.target && e.target.id === 'refreshConvos') loadConvoList();
+});
+
+socket.on('conversation-update', (summary)=>{
+  if(!summary) return;
+  loadConvoList();
+  if(selectedConvoNumber === summary.number) openConvo(summary.number);
+});
+
+// Arrancar: revisar si ya hay sesión activa, o mostrar login
+checkSession();
+
+</script>
+</body>
+</html>
